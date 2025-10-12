@@ -1,0 +1,490 @@
+local CONFIG = {
+    LOADER_URL = "https://raw.githubusercontent.com/bocaj111004/AbysallHub/refs/heads/main/Loader.lua",
+    LOAD_DELAY = 3,
+    TRANSLATE_DELAY = 0.5,   
+    DEBUG_MODE = true,
+    MAX_RETRIES = 3,
+    RETRY_DELAY = 2
+}
+
+local function debugPrint(...)
+    if CONFIG.DEBUG_MODE then
+        local timestamp = os.date("[%H:%M:%S]")
+        print(timestamp .. "[调试] " .. table.concat({...}, " "))
+    end
+end
+
+local function getLoadState()
+    return getgenv().AbysallHubLoadState or {
+        loaded = false,
+        loading = false,
+        lastAttempt = 0,
+        retryCount = 0
+    }
+end
+
+local function updateLoadState(state)
+    getgenv().AbysallHubLoadState = state
+end
+
+local loadState = getLoadState()
+if loadState.loaded then
+    debugPrint("脚本已加载，无需重复加载")
+    return
+end
+
+if loadState.loading then
+    debugPrint("脚本正在加载中，请稍候...")
+    return
+end
+
+local currentTime = os.clock()
+if currentTime - loadState.lastAttempt < 5 then
+    debugPrint("加载尝试过于频繁，请稍后再试")
+    return
+end
+
+debugPrint("===== 初始化翻译引擎 =====")
+local Translations = {
+    ["General"] = "主页",
+    ["abysall hub"] = "深渊脚本",
+    ["Speed Boost"] = "速度等级",
+    ["Toggle"] = "隐藏/显示",
+    ["Lock"] = "锁定",
+    ["Exploits"] = "漏洞利用",
+    ["ESP"] = "增强型感知",
+    ["Visuals"] = "视觉效果",
+    ["Floor"] = "楼层",
+    ["Miscellaneous"] = "杂项",
+    ["Configuration"] = "配置",
+    ["Search"] = "搜索",
+    ["Fade Time"] = "淡入淡出时间",
+    ["Text Outline Transparency"] = "文字轮廓透明度",
+    ["Text Size"] = "文字大小",
+    ["Text Font"] = "文字字体",
+    ["Custom Outline Color"] = "自定义轮廓颜色",
+    ["Show Distance"] = "显示距离",
+    ["Enable Tracers"] = "启用追踪线",
+    ["Tracer Thickness"] = "追踪线粗细",
+    ["Tracer Origin"] = "追踪线起点",
+    ["Enable Arrows"] = "启用箭头",
+    ["Arrow Radius"] = "箭头半径",
+    ["Camera"] = "相机",
+    ["Effects"] = "特效",
+    ["Ambience"] = "氛围",
+    ["Field Of View"] = "视野范围",
+    ["Third Person"] = "第三人称",
+    ["X Offset"] = "X 偏移",
+    ["Y Offset"] = "Y 偏移",
+    ["Z Offset"] = "Z 偏移",
+    ["Viewmodel Offset"] = "视图模型偏移",
+    ["Notifications"] = "通知",
+    ["Entity List"] = "实体列表",
+    ["Notify Entities"] = "通知实体",
+    ["Chat Notify"] = "聊天通知",
+    ["Notify Message"] = "通知消息",
+    ["Play Sound"] = "播放声音",
+    ["Sound Volume"] = "音量",
+    ["Notification Style"] = "通知样式",
+    ["Send Notification Test"] = "发送通知测试",
+    ["No Death Jumpscare"] = "无死亡惊吓",
+    ["No Hiding Effects"] = "无隐藏效果",
+    ["No Fog Effects"] = "无雾效",
+    ["No Seek Effects"] = "无搜寻效果",
+    ["No Camera Shake"] = "无相机抖动",
+    ["No Camera Bobbing"] = "无相机晃动",
+    ["No Timothy Jumpscare"] = "无 Timothy 惊吓",
+    ["No Glitch Jumpscare"] = "无故障惊吓",
+    ["No Void Jumpscare"] = "无虚空惊吓",
+    ["Automation"] = "自动化",
+    ["Entities"] = "实体",
+    ["Auto Breaker Puzzle"] = "自动破解谜题",
+    ["Auto Heartbeat Minigame"] = "自动心跳小游戏",
+    ["Auto Eat Candies"] = "自动吃糖果",
+    ["Candy Ignore List"] = "糖果忽略列表",
+    ["Auto Library Code"] = "自动图书馆代码",
+    ["Auto Unlock Padlock"] = "自动解锁挂锁",
+    ["Unlock Distance"] = "解锁距离",
+    ["Notify Oxygen Level"] = "通知氧气水平",
+    ["Notify Hide Time"] = "通知隐藏时间",
+    ["Notify Haste Time"] = "通知加速时间",
+    ["Disable Firedamp Effects"] = "禁用沼气效果",
+    ["Disable Vacuum"] = "禁用真空门",
+    ["Disable Giggle"] = "禁用Giggle",
+    ["Disable Gloombat Eggs"] = "禁用 Gloombat 蛋",
+    ["Disable Dread"] = "禁用Dread",
+    ["No Lookman Damage"] = "无 Lookman 伤害",
+    ["Enable"] = "启用",
+    ["Ladder Speed"] = "梯子速度",
+    ["Enable Ladder Speed"] = "启用梯子速度",
+    ["Fast Closet Exit"] = "快速柜子退出",
+    ["No Acceleration"] = "无加速度",
+    ["Noclip"] = "穿墙",
+    ["Enable Jumping"] = "启用跳跃",
+    ["Infinite Jumps"] = "无限跳跃",
+    ["Flight"] = "飞行",
+    ["Flight Speed"] = "飞行速度",
+    ["Prompt"] = "提示",
+    ["Instant Prompts"] = "即时互动",
+    ["Prompt Clip"] = "隔墙互动",
+    ["Distance Multiplier"] = "距离倍数",
+    ["World"] = "世界",
+    ["Door Reach"] = "开门范围",
+    ["Transparent Closets"] = "透明柜子",
+    ["Transparency"] = "透明度",
+    ["Disablers"] = "禁用器",
+    ["Bypasses"] = "绕过",
+    ["Position Spoof"] = "位置欺骗（无敌模式）",
+    ["Speed Bypass"] = "绕过速度检测",
+    ["Crouch Spoof"] = "假装蹲下",
+    ["Anticheat Manipulation"] = "完美穿墙",
+    ["Manipulation Method"] = "操纵方法",
+    ["Infinite Items"] = "无限物品",
+    ["Item List"] = "物品列表",
+    ["Disable Seek Obstructions"] = "禁用Seek障碍物",
+    ["Disable Snare"] = "禁用地刺",
+    ["Disable Dupe"] = "禁用假门",
+    ["Disable Screech"] = "禁用Screech",
+    ["Disable Halt"] = "禁用Halt",
+    ["Disable A-90"] = "禁用A-90",
+    ["No Eyes Damage"] = "无eyes伤害",
+    ["No Screech Damage"] = "无screech伤害",
+    ["No Halt Damage"] = "无halt伤害",
+    ["No A-90 Damage"] = "无 A-90 伤害",
+    ["Item Silent Aim"] = "物品静默瞄准",
+    ["Silent Aim Range"] = "静默瞄准范围",
+    ["Show Range"] = "显示范围",
+    ["Rainbow ESP"] = "彩虹增强型感知",
+    ["Fill Transparency"] = "填充透明度",
+    ["Outline Transparency"] = "轮廓透明度",
+    ["Text Transparency"] = "文字透明度",
+    ["Auto Interact"] = "自动交互",
+    ["Ignore List"] = "忽略列表",
+    ["Jeff Items"] = "Jeff 商店",
+    ["Interact Delay"] = "交互延迟",
+    ["Auto Closet"] = "自动躲柜子",
+    ["Spectate Mode"] = "观战模式",
+    ["Player to Entity"] = "玩家到实体",
+    ["Spectate Entity"] = "观战实体",
+    ["Selection"] = "选择",
+    ["Objectives"] = "目标",
+    ["Doors"] = "门",
+    ["Hiding Places"] = "藏身点",
+    ["Players"] = "玩家",
+    ["Chests"] = "箱子",
+    ["Items"] = "物品",
+    ["Gold"] = "黄金",
+    ["Stardust"] = "星尘",
+    ["Fake Doors"] = "假门",
+    ["Ladders"] = "梯子",
+    ["Audio Tweaks"] = "音频调整",
+    ["Remove Footstep Sounds"] = "移除脚步声",
+    ["Remove Jammin Music"] = "移除背景音乐",
+    ["Remove Interacting Sounds"] = "移除交互声音",
+    ["Remove Damage Sounds"] = "移除伤害声音",
+    ["Other"] = "其他",
+    ["Disable AFK Kick"] = "禁用挂机踢人",
+    ["Revive"] = "复活吧！",
+    ["Kill Character"] = "自杀",
+    ["Play Again"] = "重新开始",
+    ["Return to Lobby"] = "返回大厅",
+    ["Themes"] = "主题",
+    ["Background color"] = "背景颜色",
+    ["Main color"] = "主颜色",
+    ["Accent color"] = "强调颜色",
+    ["Outline color"] = "轮廓颜色",
+    ["Font color"] = "字体颜色",
+    ["Font Face"] = "字体样式",
+    ["Code"] = "代码（字体样式）",
+    ["Theme list"] = "主题列表",
+    ["Default"] = "默认",
+    ["Set as default"] = "设为默认",
+    ["Custom theme name"] = "自定义主题名称",
+    ["Create theme"] = "创建主题",
+    ["Custom themes"] = "自定义主题",
+    ["Load theme"] = "加载主题",
+    ["Overwrite theme"] = "覆盖主题",
+    ["Delete theme"] = "删除主题",
+    ["Refresh list"] = "刷新列表",
+    ["Reset default"] = "重置默认",
+    ["Settings"] = "设置",
+    ["Show Keybinds"] = "显示按键绑定",
+    ["Custom Cursor"] = "自定义光标",
+    ["Toggle Keybind"] = "切换按键绑定",
+    ["RightControl"] = "右控制键",
+    ["DPI Scale"] = "DPI 缩放",
+    ["Copy Discord Invite"] = "复制 Discord 邀请链接",
+    ["Unload"] = "卸载",
+    ["Reload"] = "重新加载",
+    ["Config name"] = "配置名称",
+    ["Create config"] = "创建配置",
+    ["Config list"] = "配置列表",
+    ["Load config"] = "加载配置",
+    ["Overwrite config"] = "覆盖配置",
+    ["Delete config"] = "删除配置",
+    ["Set as autoload"] = "设为自动加载",
+    ["Reset autoload"] = "重置自动加载",
+    [""] = "",
+    [""] = "",
+    ["Current autoload config: none"] = "当前自动加载配置：无"
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then 
+        debugPrint("翻译失败：输入不是有效字符串")
+        return text 
+    end
+    
+    if Translations[text] then
+        debugPrint("完全匹配翻译：", text, "→", Translations[text])
+        return Translations[text]
+    end
+    
+    local lowerText = text:lower()
+    for en, cn in pairs(Translations) do
+        if lowerText:find(en:lower(), 1, true) then
+            local result = text:gsub(en, cn, 1)
+            debugPrint("部分匹配翻译：", text, "→", result)
+            return result
+        end
+    end
+    
+    debugPrint("未找到翻译：", text)
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        debugPrint("尝试元表劫持方式实现翻译")
+        local mt = getrawmetatable(game)
+        local oldIndex = mt.__newindex
+        
+        if not oldIndex then
+            error("无法获取原__newindex方法")
+        end
+        
+        setreadonly(mt, false)
+        
+        mt.__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                local original = tostring(v)
+                local translated = translateText(original)
+                if original ~= translated then
+                    debugPrint("实时翻译：", original, "→", translated)
+                    v = translated
+                end
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(mt, true)
+        debugPrint("元表劫持方式初始化成功")
+    end)
+    
+    if not success then
+        debugPrint("元表劫持失败：", err, "使用备用扫描方式")
+       
+        local translated = setmetatable({}, {__mode = "k"})
+        
+        local function translateGui(gui)
+            if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                pcall(function()
+                    local original = gui.Text
+                    if original and original ~= "" then
+                        local translatedText = translateText(original)
+                        if translatedText ~= original then
+                            gui.Text = translatedText
+                            translated[gui] = true
+                            debugPrint("已翻译GUI元素：", gui:GetFullName())
+                        end
+                    end
+                end)
+            end
+        end
+        
+        local function scanAndTranslate()
+            debugPrint("开始扫描并翻译现有元素")
+            local count = 0
+            for _, container in ipairs({game:GetService("CoreGui"), game.Players.LocalPlayer.PlayerGui}) do
+                if container then
+                    for _, gui in ipairs(container:GetDescendants()) do
+                        if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) then
+                            count = count + 1
+                            translateGui(gui)
+                        end
+                    end
+                else
+                    debugPrint("容器不存在：", container)
+                end
+            end
+            debugPrint("扫描完成，共检查", count, "个文本元素")
+        end
+        
+        local function setupListener(parent)
+            if parent then
+                parent.DescendantAdded:Connect(function(descendant)
+                    task.defer(function()
+                        if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) then
+                            debugPrint("发现新文本元素：", descendant:GetFullName())
+                            translateGui(descendant)
+                        end
+                    end)
+                end)
+                debugPrint("已为", parent:GetFullName(), "设置新元素监听器")
+            else
+                debugPrint("无法为nil父对象设置监听器")
+            end
+        end
+        
+        setupListener(game:GetService("CoreGui"))
+        setupListener(game.Players.LocalPlayer.PlayerGui)
+        scanAndTranslate()
+        
+        task.spawn(function()
+            local isExternalLoaded = getgenv().AbysallHubLoaded or false
+            debugPrint("开始翻译扫描循环，外部脚本状态：", isExternalLoaded)
+            while true do
+                scanAndTranslate()
+                local waitTime = isExternalLoaded and 10 or 5
+                debugPrint("扫描完成，等待", waitTime, "秒后再次扫描")
+                task.wait(waitTime)
+                isExternalLoaded = getgenv().AbysallHubLoaded or false
+            end
+        end)
+    end
+end
+
+debugPrint("等待", CONFIG.TRANSLATE_DELAY, "秒后启动翻译引擎")
+task.wait(CONFIG.TRANSLATE_DELAY)
+setupTranslationEngine()
+debugPrint("翻译引擎初始化流程已完成")
+
+local function loadExternalScript()
+    debugPrint("===== 开始加载外部脚本 =====")
+    updateLoadState({
+        loaded = false,
+        loading = true,
+        lastAttempt = currentTime,
+        retryCount = loadState.retryCount
+    })
+
+    debugPrint("重置外部脚本加载状态")
+    getgenv().AbysallHubLoaded = nil
+    getgenv().AbysallHub = nil
+
+    local loadSuccess, loadErr
+    local loaderScript
+    local attempts = 0
+
+    while attempts < CONFIG.MAX_RETRIES do
+        attempts = attempts + 1
+        debugPrint("加载尝试 #" .. attempts)
+
+        loadSuccess, loadErr = pcall(function()
+            debugPrint("尝试方法1：使用HttpGetAsync加载外部脚本")
+            loaderScript = game:HttpGetAsync(CONFIG.LOADER_URL, false)
+        end)
+
+        if not loadSuccess then
+            loadSuccess, loadErr = pcall(function()
+                debugPrint("尝试方法2：使用HttpService:GetAsync")
+                local http = game:GetService("HttpService")
+                loaderScript = http:GetAsync(CONFIG.LOADER_URL, false)
+            end)
+        end
+
+        if not loadSuccess then
+            loadSuccess, loadErr = pcall(function()
+                debugPrint("尝试方法3：使用loadstring+HttpGet")
+                loaderScript = loadstring(game:HttpGet(CONFIG.LOADER_URL))()
+            end)
+        end
+
+        if loadSuccess then
+            break
+        end
+        
+        debugPrint("加载尝试 #" .. attempts .. " 失败：", loadErr)
+        if attempts < CONFIG.MAX_RETRIES then
+            debugPrint("等待 " .. CONFIG.RETRY_DELAY .. " 秒后重试...")
+            task.wait(CONFIG.RETRY_DELAY)
+        end
+    end
+
+    if loadSuccess and loaderScript then
+        debugPrint("外部脚本下载成功，长度：", #loaderScript)
+        
+        if type(loaderScript) == "string" and #loaderScript < 100 then
+            warn("脚本内容异常简短，可能下载不完整")
+            debugPrint("脚本前100字符：", loaderScript:sub(1, 100))
+        end
+        
+        local execSuccess, execErr = pcall(function()
+            debugPrint("开始执行外部脚本")
+            if type(loaderScript) == "string" then
+                loadstring(loaderScript)()
+            else
+                loaderScript()
+            end
+        end)
+        
+        if execSuccess then
+            debugPrint("外部脚本执行成功")
+            debugPrint("等待", CONFIG.LOAD_DELAY, "秒让外部脚本完成初始化")
+            task.wait(CONFIG.LOAD_DELAY)
+            
+            if getgenv().AbysallHub then
+                debugPrint("检测到AbysallHub对象，确认加载成功")
+                updateLoadState({
+                    loaded = true,
+                    loading = false,
+                    lastAttempt = currentTime,
+                    retryCount = 0
+                })
+                getgenv().AbysallHubLoaded = true
+                
+                if type(getgenv().AbysallHub.Show) == "function" then
+                    debugPrint("尝试调用Show()方法显示界面")
+                    pcall(getgenv().AbysallHub.Show)
+                end
+            else
+                warn("脚本执行成功，但未检测到AbysallHub对象")
+                updateLoadState({
+                    loaded = false,
+                    loading = false,
+                    lastAttempt = currentTime,
+                    retryCount = loadState.retryCount + 1
+                })
+            end
+        else
+            warn("外部脚本执行失败：", execErr)
+            updateLoadState({
+                loaded = false,
+                loading = false,
+                lastAttempt = currentTime,
+                retryCount = loadState.retryCount + 1
+            })
+        end
+    else
+        warn("外部脚本加载失败（已达最大重试次数）：", loadErr)
+        updateLoadState({
+            loaded = false,
+            loading = false,
+            lastAttempt = currentTime,
+            retryCount = loadState.retryCount + 1
+        })
+    end
+end
+
+loadExternalScript()
+
+task.wait(1)
+if not getgenv().AbysallHubLoaded then
+    debugPrint("===== 加载问题排查 =====")
+    debugPrint("1. 检查URL是否可访问：", CONFIG.LOADER_URL)
+    debugPrint("2. 确认网络连接正常")
+    debugPrint("3. 检查是否有防火墙/安全软件阻止访问")
+    debugPrint("4. 尝试手动访问URL查看是否返回有效脚本")
+end
+
+debugPrint("所有流程执行完毕")
