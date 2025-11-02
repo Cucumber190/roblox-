@@ -2,16 +2,51 @@ local CONFIG = {
     LOADER_URL = "https://raw.githubusercontent.com/bocaj111004/AbysallHub/refs/heads/main/Loader.lua",
     LOAD_DELAY = 3,
     TRANSLATE_DELAY = 0.5,   
-    DEBUG_MODE = true,
+    DEBUG_MODE = false,
     MAX_RETRIES = 3,
-    RETRY_DELAY = 2
+    RETRY_DELAY = 2,
+    SLIDER_SCAN_INTERVAL = 1
 }
 
-local function debugPrint(...)
-    if CONFIG.DEBUG_MODE then
-        local timestamp = os.date("[%H:%M:%S]")
-        print(timestamp .. "[调试] " .. table.concat({...}, " "))
-    end
+local function showNotification(message)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "TranslationNotification"
+    ScreenGui.Parent = game:GetService("CoreGui")
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 300, 0, 100)
+    Frame.Position = UDim2.new(0.5, -150, 0.5, -50)
+    Frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    Frame.BorderColor3 = Color3.new(0.3, 0.3, 0.3)
+    Frame.BorderSizePixel = 2
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, 0, 0.8, 0)
+    TextLabel.Position = UDim2.new(0, 0, 0, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Text = message
+    TextLabel.TextColor3 = Color3.new(1, 1, 1)
+    TextLabel.TextScaled = true
+    TextLabel.Parent = Frame
+
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(1, 0, 0.2, 0)
+    CloseButton.Position = UDim2.new(0, 0, 0.8, 0)
+    CloseButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    CloseButton.Text = "关闭"
+    CloseButton.TextColor3 = Color3.new(1, 1, 1)
+    CloseButton.Parent = Frame
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    task.spawn(function()
+        task.wait(3)
+        ScreenGui:Destroy()
+    end)
 end
 
 local function getLoadState()
@@ -29,28 +64,28 @@ end
 
 local loadState = getLoadState()
 if loadState.loaded then
-    debugPrint("脚本已加载，无需重复加载")
     return
 end
 
 if loadState.loading then
-    debugPrint("脚本正在加载中，请稍候...")
     return
 end
 
 local currentTime = os.clock()
 if currentTime - loadState.lastAttempt < 5 then
-    debugPrint("加载尝试过于频繁，请稍后再试")
     return
 end
 
-debugPrint("===== 初始化翻译引擎 =====")
 local Translations = {
     ["General"] = "主页",
+    ["abysall hub"] = "abysall hub[简体中文]",
+    ["Speed Boost"] = "加速等级",
     ["Enable Speed Boost"] = "启用速度加成",
-    ["Toggle"] = "隐藏/显示",
+    ["Toggle"] = "开/关",
     ["Lock"] = "锁定",
+    ["Unlock"] = "已锁定",
     ["Exploits"] = "漏洞利用",
+    ["Character"] = "玩家",
     ["ESP"] = "增强型感知",
     ["Visuals"] = "视觉效果",
     ["Floor"] = "楼层",
@@ -92,7 +127,7 @@ local Translations = {
     ["No Seek Effects"] = "无搜寻效果",
     ["No Camera Shake"] = "无相机抖动",
     ["No Camera Bobbing"] = "无相机晃动",
-    ["No Timothy Jumpscare"] = "无 Timothy 惊吓",
+    ["No Timothy Jumpscare"] = "无Timothy惊吓",
     ["No Glitch Jumpscare"] = "无故障惊吓",
     ["No Void Jumpscare"] = "无虚空惊吓",
     ["Automation"] = "自动化",
@@ -102,6 +137,17 @@ local Translations = {
     ["Auto Eat Candies"] = "自动吃糖果",
     ["Candy Ignore List"] = "糖果忽略列表",
     ["Auto Library Code"] = "自动图书馆代码",
+    ["Auto Minecart"] = "自动矿车",
+    ["Crouch Distance"] = "蹲下距离",
+    ["Turn Distance"] = "转向距离",
+    ["Predict"] = "预测",
+    ["Predict"] = "去除",
+    ["Basement"] = "地下室",
+    ["Painting"] = "画房",
+    ["Auto Play Rooms"] = "自动Rooms",
+    ["Show Path"] = "显示路径",
+    ["Auto Anchor Code"] = "自动锚点代码",
+    ["Auto Solve Anchors"] = "自动解决锚点",
     ["Auto Unlock Padlock"] = "自动解锁挂锁",
     ["Unlock Distance"] = "解锁距离",
     ["Notify Oxygen Level"] = "通知氧气水平",
@@ -110,10 +156,15 @@ local Translations = {
     ["Disable Firedamp Effects"] = "禁用沼气效果",
     ["Disable Vacuum"] = "禁用真空门",
     ["Disable Giggle"] = "禁用Giggle",
-    ["Disable Gloombat Eggs"] = "禁用 Gloombat 蛋",
+    ["Disable Gloombat Eggs"] = "禁用Gloombat蛋",
     ["Disable Dread"] = "禁用Dread",
-    ["No Lookman Damage"] = "无 Lookman 伤害",
+    ["No Lookman Damage"] = "无Lookman伤害",
     ["Enable"] = "启用",
+    ["Bottom"] = "身体",
+    ["Mouse"] = "鼠标",
+    ["Top"] = "头顶",
+    ["This painting is titled"] = "这幅画标题为",
+    ["Center"] = "准心",
     ["Ladder Speed"] = "梯子速度",
     ["Enable Ladder Speed"] = "启用梯子速度",
     ["Fast Closet Exit"] = "快速柜子退出",
@@ -133,14 +184,20 @@ local Translations = {
     ["Transparency"] = "透明度",
     ["Disablers"] = "禁用器",
     ["Bypasses"] = "绕过",
+    ["Bypass"] = "绕过",
+    ["Delete"] = "删除",
+    ["Disable seek flood"] = "禁用dam seek液体伤害",
+    ["Anticheat Bypass"] = "反作弊绕过",
+    ["Oxygen level"] = "氧气水平",
     ["Position Spoof"] = "位置欺骗（无敌模式）",
+    ["Spoof Position"] = "位置欺骗（无敌模式）",
     ["Speed Bypass"] = "绕过速度检测",
     ["Crouch Spoof"] = "假装蹲下",
     ["Anticheat Manipulation"] = "完美穿墙",
     ["Manipulation Method"] = "操纵方法",
     ["Infinite Items"] = "无限物品",
     ["Item List"] = "物品列表",
-    ["Disable Seek Obstructions"] = "禁用Seek障碍物",
+    ["Disable Seek Obstrctions"] = "禁用Seek障碍物",
     ["Disable Snare"] = "禁用地刺",
     ["Disable Dupe"] = "禁用假门",
     ["Disable Screech"] = "禁用Screech",
@@ -164,6 +221,7 @@ local Translations = {
     ["Auto Closet"] = "自动躲柜子",
     ["Spectate Mode"] = "观战模式",
     ["Player to Entity"] = "玩家到实体",
+    ["Entity to Player"] = "玩家到实体",
     ["Spectate Entity"] = "观战实体",
     ["Selection"] = "选择",
     ["Objectives"] = "目标",
@@ -174,6 +232,7 @@ local Translations = {
     ["Items"] = "物品",
     ["Gold"] = "黄金",
     ["Stardust"] = "星尘",
+    ["Dupe"] = "假门",
     ["Fake Doors"] = "假门",
     ["Ladders"] = "梯子",
     ["Audio Tweaks"] = "音频调整",
@@ -194,7 +253,7 @@ local Translations = {
     ["Outline color"] = "轮廓颜色",
     ["Font color"] = "字体颜色",
     ["Font Face"] = "字体样式",
-    ["Code"] = "代码（字体样式）",
+    ["Code"] = "字体样式",
     ["Theme list"] = "主题列表",
     ["Default"] = "默认",
     ["Set as default"] = "设为默认",
@@ -210,7 +269,9 @@ local Translations = {
     ["Show Keybinds"] = "显示按键绑定",
     ["Custom Cursor"] = "自定义光标",
     ["Toggle Keybind"] = "切换按键绑定",
-    ["RightControl"] = "右控制键",
+    ["Keybinds"] = "按键绑定",
+    ["Are you sure"] = "你确定吗",
+    ["RightControl"] = "右ctrl",
     ["DPI Scale"] = "DPI 缩放",
     ["Copy Discord Invite"] = "复制 Discord 邀请链接",
     ["Unload"] = "卸载",
@@ -223,52 +284,183 @@ local Translations = {
     ["Delete config"] = "删除配置",
     ["Set as autoload"] = "设为自动加载",
     ["Reset autoload"] = "重置自动加载",
-    [""] = "",
-    ["Current autoload config: none"] = "当前自动加载配置：无"
+    ["Changes your walkspeed to the specified amount."] = "更改你的行走速度（开绕过速度检测可以更快！）",
+    ["Current autoload config: "] = "当前自动加载配置:",
+    ["Successfully bypassed the Anticheat"] = "成功绕过反作弊",
+    ["It will only last until the next cutscene"] = "它只会持续到下个过场动画",
+    ["The anticheat bypass has been broken"] = "反作弊绕过已失效",
+    ["Get on a ladder to fix it"] = "爬上梯子修复",
+    ["Your movement is now fully automated"] = "您的行动现已完全自动化",
+    ["Avoid walking on the grass"] = "避免在草地上行走",
+    ["Position Spoof doesn't work on A-120"] = "遁地术在 A-120 上不起作用",
+    ["Show Seek Path"] = "显示 Seek 路径",
+    ["Show Eyestalk Path"] = "显示 Eyestalk 路径",
+    ["Viusals"] = "视觉",
+    ["Door"] = "门",
+    ["Disable Nanner Peel"] = "禁用香蕉皮",
+    ["Powerup Aura"] = "强化光环",
+    ["Doors"] = "门",
+    ["Chest"] = "箱子",
+    ["Vine"] = "藤蔓",
+    ["Lighter"] = "打火机",
+    ["Flashlight"] = "手电筒",
+    ["Vitamins"] = "维他命",
+    ["Crucifix"] = "十字架",
+    ["Skeleton Key"] = "骷髅钥匙",
+    ["Gummy Flashlight"] = "手摇手电筒",
+    ["Candle"] = "蜡烛",
+    ["Moonlight Candle"] = "月光蜡烛",
+    ["Star Vial"] = "星光小瓶",
+    ["Star Bottle"] = "星光瓶",
+    ["Star Jug"] = "星光桶",
+    ["Laser Pointer"] = "激光笔",
+    ["Battery Pack"] = "电池包",
+    ["Bandage Pack"] = "绷带包",
+    ["Shears"] = "剪刀",
+    ["Toolshed"] = "工具棚",
+    ["Glowstick"] = "荧光棒",
+    ["Spotlight"] = "大灯",
+    ["Straplight"] = "肩灯",
+    ["Dumpster"] = "垃圾桶",
+    ["Alarm Clock"] = "闹钟",
+    ["Smoohie"] = "啤酒",
+    ["Moonlight Smoohie"] = "月光啤酒",
+    ["Gween Soda"] = "绿色汽水",
+    ["Bread"] = "面包",
+    ["Cheese"] = "奶酪",
+    ["Donut"] = "甜甜圈",
+    ["Aloe"] = "芦荟",
+    ["Compass"] = "罗盘",
+    ["Lantern"] = "灯笼",
+    ["Lotus Petal"] = "莲花",
+    ["Iron Key"] = "铁钥匙",
+    ["Multi Tool"] = "多功能工具",
+    ["Tip Jar"] = "小费罐",
+    ["Rift Jar"] = "裂隙罐",
+    ["Puzzle Painting"] = "拼图画",
+    ["Library Paper"] = "密码纸",
+    ["Breaker"] = "断路器",
+    ["Generator Fuse"] = "保险丝",
+    ["Lotus Petal"] = "花瓣",
+    ["Battery"] = "电池",
+    ["Bandage"] = "绷带",
+    ["Glitch Fragment"] = "故障碎片",
+    ["Lever"] = "拉杆",
+    ["Time Lever"] = "计时器杆",
+    ["Star Dust"] = "星尘",
+    ["Generator"] = "发电机",
+    ["Door Key"] = "门钥匙",
+    ["Anchor"] = "锚点",
+    ["Book"] = "书",
+    ["Electrical Key"] = "配电室钥匙",
+    ["Gate"] = "大门",
+    ["Button"] = "按钮",
+    ["Water Pump"] = "水阀",
+    ["Pipe"] = "水管",
+    ["Bed"] = "床",
+    ["Double Bed"] = "双人床",
+    ["Closet"] = "橱柜",
+    ["Locker"] = "铁柜",
+    ["Mouse Hole"] = "老鼠洞",
+    ["Item Locker"] = "物品柜",
+    ["Herb of Viridis"] = "药草",
+    ["Gold"] = "黄金",
+    ["Stardust Pile"] = "星尘",
+    ["Vacuum"] = "虚空",
+    ["THE EVIL KEY"] = "邪恶的钥匙",
+    ["Hole"] = "洞",
+    ["Snare"] = "陷阱",
+    ["Ladder"] = "梯子",
+    ["Toolbox"] = "工具箱",
+    ["Fridge Locker"] = "冰箱柜",
+    ["Vine Lever"] = "藤蔓断头台",
+    ["Vial of Starlight"] = "星光小瓶",
+    ["Bottle of Starlight"] = "星光瓶",
+    ["Barrel of Starlight"] = "星光桶",
+    ["Win Shield"] = "胜利护盾",
+    ["Big Shield Potion"] = "大护盾药水",
+    ["Small Shield Potion"] = "小护盾药水",
+    ["Holy Hand Grenade"] = "神圣手雷",
+    ["Max Players"] = "最大玩家数量",
+    ["Modifiers"] = "修饰符",
+    ["Destination"] = "目的地",
+    ["Friends Only"] = "仅限好友",
+    ["Create Elevator"] = "创建电梯",
+    ["Import from Game UI"] = "从游戏 UI 导入",
+    ["Damage"] = "伤害",
+    ["Elevator name"] = "电梯名称",
+    ["Create elevator"] = "创建电梯",
+    ["Saved elevators"] = "已保存的电梯",
+    ["Load elevator"] = "载入电梯",
+    ["Overwrite elevator"] = "覆盖电梯",
+    ["Delete elevator"] = "删除电梯",
+    ["Auto Join Elevator"] = "自动加入电梯",
+    ["Redeem all Codes"] = "兑换所有礼包代码",
+    ["Rejoin Server"] = "重新加入服务器",
+    ["Cycle Delay"] = "周期延迟",
+    ["Cycle Achievements"] = "循环成就",
+    ["Pivot"] = "鬼步法",
+    ["Velocity"] = "直穿法",
+    ["Infinite"] = "无限",
+    ["Item List"] = "物品列表",
+    ["Lockpicks"] = "撬锁器",
+    ["Skeleton Key"] = "骷髅钥匙",
+    ["Shears"] = "剪刀",
+    ["Toolbox"] = "工具箱",
+    ["Toolshed"] = "工具棚",
+    ["Multitool"] = "多功能工具",
+    ["walkspeed"] = "行走速度",
+    ["player"] = "玩家",
+    ["misc"] = "其他",
+    ["Creation"] = "创建",
+    ["Manager"] = "配置",
+    ["Saves"] = "存档",
+    ["Panel Settings"] = "面板设置",
 }
 
 local function translateText(text)
     if not text or type(text) ~= "string" then 
-        debugPrint("翻译失败：输入不是有效字符串")
         return text 
     end
     
-    if Translations[text] then
-        debugPrint("完全匹配翻译：", text, "→", Translations[text])
-        return Translations[text]
-    end
-    
-    local lowerText = text:lower()
+    local processedText = text:lower():gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    local originalProcessed = processedText
+
     for en, cn in pairs(Translations) do
-        if lowerText:find(en:lower(), 1, true) then
-            local result = text:gsub(en, cn, 1)
-            debugPrint("部分匹配翻译：", text, "→", result)
+        local enLower = en:lower()
+        if processedText == enLower or processedText == enLower .. ":" or processedText == enLower .. " " then
+            return cn
+        end
+    end
+
+    for en, cn in pairs(Translations) do
+        local enLower = en:lower()
+        if processedText:find(enLower, 1, true) then
+            local pattern = en:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
+            local result = text:gsub(pattern, cn, 1)
             return result
         end
     end
-    
-    debugPrint("未找到翻译：", text)
+
     return text
 end
 
 local function setupTranslationEngine()
     local success, err = pcall(function()
-        debugPrint("尝试元表劫持方式实现翻译")
         local mt = getrawmetatable(game)
         local oldIndex = mt.__newindex
         
         if not oldIndex then
-            error("无法获取原__newindex方法")
+            error("")
         end
         
         setreadonly(mt, false)
         
         mt.__newindex = newcclosure(function(t, k, v)
-            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox") or t:IsA("Slider")) and k == "Text" then
                 local original = tostring(v)
                 local translated = translateText(original)
                 if original ~= translated then
-                    debugPrint("实时翻译：", original, "→", translated)
                     v = translated
                 end
             end
@@ -276,89 +468,127 @@ local function setupTranslationEngine()
         end)
         
         setreadonly(mt, true)
-        debugPrint("元表劫持方式初始化成功")
     end)
     
     if not success then
-        debugPrint("元表劫持失败：", err, "使用备用扫描方式")
-       
         local translated = setmetatable({}, {__mode = "k"})
         
+        local function isSliderRelated(gui)
+            local parent = gui.Parent
+            return parent and (parent.Name:find("Slider") or parent.Name:find("Control") or parent.Name:find("Adjust"))
+        end
+        
         local function translateGui(gui)
+            local isSlider = isSliderRelated(gui)
             if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                task.wait(isSlider and 0.3 or 0.1)
                 pcall(function()
                     local original = gui.Text
                     if original and original ~= "" then
                         local translatedText = translateText(original)
                         if translatedText ~= original then
                             gui.Text = translatedText
-                            translated[gui] = true
-                            debugPrint("已翻译GUI元素：", gui:GetFullName())
                         end
                     end
+                    
+                    gui:GetPropertyChangedSignal("Text"):Connect(function()
+                        task.wait(0.05)
+                        local newText = gui.Text
+                        local newTranslated = translateText(newText)
+                        if newTranslated ~= newText then
+                            gui.Text = newTranslated
+                        end
+                    end)
+                    
+                    translated[gui] = true
                 end)
             end
         end
         
         local function scanAndTranslate()
-            debugPrint("开始扫描并翻译现有元素")
-            local count = 0
-            for _, container in ipairs({game:GetService("CoreGui"), game.Players.LocalPlayer.PlayerGui}) do
+            local containers = {
+                game:GetService("CoreGui"),
+                game.Players.LocalPlayer.PlayerGui,
+                game:GetService("StarterGui")
+            }
+            for _, container in ipairs(containers) do
                 if container then
                     for _, gui in ipairs(container:GetDescendants()) do
                         if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) then
-                            count = count + 1
                             translateGui(gui)
                         end
                     end
-                else
-                    debugPrint("容器不存在：", container)
                 end
             end
-            debugPrint("扫描完成，共检查", count, "个文本元素")
+        end
+        
+        local function scanSlidersOnly()
+            local containers = {
+                game:GetService("CoreGui"),
+                game.Players.LocalPlayer.PlayerGui
+            }
+            for _, container in ipairs(containers) do
+                if container then
+                    for _, gui in ipairs(container:GetDescendants()) do
+                        if (gui:IsA("TextLabel") or gui:IsA("TextButton")) and isSliderRelated(gui) and not translated[gui] then
+                            translateGui(gui)
+                        end
+                    end
+                end
+            end
         end
         
         local function setupListener(parent)
             if parent then
                 parent.DescendantAdded:Connect(function(descendant)
-                    task.defer(function()
-                        if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) then
-                            debugPrint("发现新文本元素：", descendant:GetFullName())
-                            translateGui(descendant)
-                        end
-                    end)
+                    local delay = isSliderRelated(descendant) and 0.5 or 0.2
+                    task.wait(delay)
+                    if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) then
+                        translateGui(descendant)
+                    end
                 end)
-                debugPrint("已为", parent:GetFullName(), "设置新元素监听器")
-            else
-                debugPrint("无法为nil父对象设置监听器")
             end
         end
         
-        setupListener(game:GetService("CoreGui"))
-        setupListener(game.Players.LocalPlayer.PlayerGui)
+        local containers = {
+            game:GetService("CoreGui"),
+            game.Players.LocalPlayer.PlayerGui,
+            game:GetService("StarterGui")
+        }
+        for _, container in ipairs(containers) do
+            setupListener(container)
+        end
+        
         scanAndTranslate()
         
         task.spawn(function()
             local isExternalLoaded = getgenv().AbysallHubLoaded or false
-            debugPrint("开始翻译扫描循环，外部脚本状态：", isExternalLoaded)
             while true do
                 scanAndTranslate()
-                local waitTime = isExternalLoaded and 10 or 5
-                debugPrint("扫描完成，等待", waitTime, "秒后再次扫描")
+                local waitTime = isExternalLoaded and 8 or 3
                 task.wait(waitTime)
                 isExternalLoaded = getgenv().AbysallHubLoaded or false
+            end
+        end)
+        
+        task.spawn(function()
+            while true do
+                scanSlidersOnly()
+                task.wait(CONFIG.SLIDER_SCAN_INTERVAL)
             end
         end)
     end
 end
 
-debugPrint("等待", CONFIG.TRANSLATE_DELAY, "秒后启动翻译引擎")
 task.wait(CONFIG.TRANSLATE_DELAY)
 setupTranslationEngine()
-debugPrint("翻译引擎初始化流程已完成")
+
+showNotification(" 翻译引擎加载完成 准备启动脚本")
+print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
+print("翻译引擎加载成功 v0.2 2025/11/2")
+print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")  -- 新增：输出翻译完成日志
 
 local function loadExternalScript()
-    debugPrint("===== 开始加载外部脚本 =====")
     updateLoadState({
         loaded = false,
         loading = true,
@@ -366,7 +596,6 @@ local function loadExternalScript()
         retryCount = loadState.retryCount
     })
 
-    debugPrint("重置外部脚本加载状态")
     getgenv().AbysallHubLoaded = nil
     getgenv().AbysallHub = nil
 
@@ -376,16 +605,13 @@ local function loadExternalScript()
 
     while attempts < CONFIG.MAX_RETRIES do
         attempts = attempts + 1
-        debugPrint("加载尝试 #" .. attempts)
 
         loadSuccess, loadErr = pcall(function()
-            debugPrint("尝试方法1：使用HttpGetAsync加载外部脚本")
             loaderScript = game:HttpGetAsync(CONFIG.LOADER_URL, false)
         end)
 
         if not loadSuccess then
             loadSuccess, loadErr = pcall(function()
-                debugPrint("尝试方法2：使用HttpService:GetAsync")
                 local http = game:GetService("HttpService")
                 loaderScript = http:GetAsync(CONFIG.LOADER_URL, false)
             end)
@@ -393,7 +619,6 @@ local function loadExternalScript()
 
         if not loadSuccess then
             loadSuccess, loadErr = pcall(function()
-                debugPrint("尝试方法3：使用loadstring+HttpGet")
                 loaderScript = loadstring(game:HttpGet(CONFIG.LOADER_URL))()
             end)
         end
@@ -402,23 +627,13 @@ local function loadExternalScript()
             break
         end
         
-        debugPrint("加载尝试 #" .. attempts .. " 失败：", loadErr)
         if attempts < CONFIG.MAX_RETRIES then
-            debugPrint("等待 " .. CONFIG.RETRY_DELAY .. " 秒后重试...")
             task.wait(CONFIG.RETRY_DELAY)
         end
     end
 
     if loadSuccess and loaderScript then
-        debugPrint("外部脚本下载成功，长度：", #loaderScript)
-        
-        if type(loaderScript) == "string" and #loaderScript < 100 then
-            warn("脚本内容异常简短，可能下载不完整")
-            debugPrint("脚本前100字符：", loaderScript:sub(1, 100))
-        end
-        
         local execSuccess, execErr = pcall(function()
-            debugPrint("开始执行外部脚本")
             if type(loaderScript) == "string" then
                 loadstring(loaderScript)()
             else
@@ -427,12 +642,9 @@ local function loadExternalScript()
         end)
         
         if execSuccess then
-            debugPrint("外部脚本执行成功")
-            debugPrint("等待", CONFIG.LOAD_DELAY, "秒让外部脚本完成初始化")
             task.wait(CONFIG.LOAD_DELAY)
             
             if getgenv().AbysallHub then
-                debugPrint("检测到AbysallHub对象，确认加载成功")
                 updateLoadState({
                     loaded = true,
                     loading = false,
@@ -442,11 +654,9 @@ local function loadExternalScript()
                 getgenv().AbysallHubLoaded = true
                 
                 if type(getgenv().AbysallHub.Show) == "function" then
-                    debugPrint("尝试调用Show()方法显示界面")
                     pcall(getgenv().AbysallHub.Show)
                 end
             else
-                warn("脚本执行成功，但未检测到AbysallHub对象")
                 updateLoadState({
                     loaded = false,
                     loading = false,
@@ -455,7 +665,6 @@ local function loadExternalScript()
                 })
             end
         else
-            warn("外部脚本执行失败：", execErr)
             updateLoadState({
                 loaded = false,
                 loading = false,
@@ -464,7 +673,6 @@ local function loadExternalScript()
             })
         end
     else
-        warn("外部脚本加载失败（已达最大重试次数）：", loadErr)
         updateLoadState({
             loaded = false,
             loading = false,
@@ -477,12 +685,3 @@ end
 loadExternalScript()
 
 task.wait(1)
-if not getgenv().AbysallHubLoaded then
-    debugPrint("===== 加载问题排查 =====")
-    debugPrint("1. 检查URL是否可访问：", CONFIG.LOADER_URL)
-    debugPrint("2. 确认网络连接正常")
-    debugPrint("3. 检查是否有防火墙/安全软件阻止访问")
-    debugPrint("4. 尝试手动访问URL查看是否返回有效脚本")
-end
-
-debugPrint("所有流程执行完毕")
