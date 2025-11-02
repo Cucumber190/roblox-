@@ -317,6 +317,7 @@ local Translations = {
     ["Battery Pack"] = "电池包",
     ["Bandage Pack"] = "绷带包",
     ["Shears"] = "剪刀",
+    ["lockpick"] = "撬锁器",
     ["Toolshed"] = "工具棚",
     ["Glowstick"] = "荧光棒",
     ["Spotlight"] = "大灯",
@@ -685,3 +686,4 @@ end
 loadExternalScript()
 
 task.wait(1)
+
