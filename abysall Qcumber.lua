@@ -1,87 +1,26 @@
 local CONFIG = {
-    LOADER_URL = "https://raw.githubusercontent.com/bocaj111004/AbysallHub/refs/heads/main/Loader.lua",
-    LOAD_DELAY = 3,
-    TRANSLATE_DELAY = 0.5,   
-    DEBUG_MODE = false,
-    MAX_RETRIES = 3,
-    RETRY_DELAY = 2,
-    SLIDER_SCAN_INTERVAL = 1
+    TRANSLATE_DELAY = 0.2,
+    NOTIFICATION_DURATION = 3,
+    GUI_SCAN_DELAY = 0.02,
+    BATCH_PROCESS_SIZE = 50
 }
 
-local function showNotification(message)
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "TranslationNotification"
-    ScreenGui.Parent = game:GetService("CoreGui")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 300, 0, 100)
-    Frame.Position = UDim2.new(0.5, -150, 0.5, -50)
-    Frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-    Frame.BorderColor3 = Color3.new(0.3, 0.3, 0.3)
-    Frame.BorderSizePixel = 2
-    Frame.Active = true
-    Frame.Draggable = true
-    Frame.Parent = ScreenGui
-
-    local TextLabel = Instance.new("TextLabel")
-    TextLabel.Size = UDim2.new(1, 0, 0.8, 0)
-    TextLabel.Position = UDim2.new(0, 0, 0, 0)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Text = message
-    TextLabel.TextColor3 = Color3.new(1, 1, 1)
-    TextLabel.TextScaled = true
-    TextLabel.Parent = Frame
-
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(1, 0, 0.2, 0)
-    CloseButton.Position = UDim2.new(0, 0, 0.8, 0)
-    CloseButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-    CloseButton.Text = "关闭"
-    CloseButton.TextColor3 = Color3.new(1, 1, 1)
-    CloseButton.Parent = Frame
-    CloseButton.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-    end)
-
-    task.spawn(function()
-        task.wait(3)
-        ScreenGui:Destroy()
-    end)
-end
-
-local function getLoadState()
-    return getgenv().AbysallHubLoadState or {
-        loaded = false,
-        loading = false,
-        lastAttempt = 0,
-        retryCount = 0
-    }
-end
-
-local function updateLoadState(state)
-    getgenv().AbysallHubLoadState = state
-end
-
-local loadState = getLoadState()
-if loadState.loaded then
-    return
-end
-
-if loadState.loading then
-    return
-end
-
-local currentTime = os.clock()
-if currentTime - loadState.lastAttempt < 5 then
-    return
-end
+local LocalPlayer = Players.LocalPlayer
 
 local Translations = {
     ["General"] = "主页",
-    ["abysall hub"] = "abysall hub[简体中文]",
+    ["[Abysall Hub]"] = "[深渊·脚本]",
+    ["Transparency"] = "透明度",
+    ["abysall hub"] = "深渊·中国[Qcumber100]",
     ["Speed Boost"] = "加速等级",
+    ["Ladder Speed"] = "梯子速度",
     ["Enable Speed Boost"] = "启用速度加成",
-    ["Toggle"] = "开/关",
+    ["Lockpick"] = "撬锁器",
     ["Lock"] = "锁定",
     ["Unlock"] = "已锁定",
     ["Exploits"] = "漏洞利用",
@@ -119,7 +58,7 @@ local Translations = {
     ["Notify Message"] = "通知消息",
     ["Play Sound"] = "播放声音",
     ["Sound Volume"] = "音量",
-    ["Notification Style"] = "通知样式",
+    ["Notification Style"] = "通知样式(“门”可能不可用)",
     ["Send Notification Test"] = "发送通知测试",
     ["No Death Jumpscare"] = "无死亡惊吓",
     ["No Hiding Effects"] = "无隐藏效果",
@@ -128,8 +67,8 @@ local Translations = {
     ["No Camera Shake"] = "无相机抖动",
     ["No Camera Bobbing"] = "无相机晃动",
     ["No Timothy Jumpscare"] = "无Timothy惊吓",
-    ["No Glitch Jumpscare"] = "无故障惊吓",
-    ["No Void Jumpscare"] = "无虚空惊吓",
+    ["No Glitch Jumpscare"] = "无Glitch惊吓",
+    ["No Void Jumpscare"] = "无虚空门惊吓",
     ["Automation"] = "自动化",
     ["Entities"] = "实体",
     ["Auto Breaker Puzzle"] = "自动破解谜题",
@@ -156,7 +95,7 @@ local Translations = {
     ["Disable Firedamp Effects"] = "禁用沼气效果",
     ["Disable Vacuum"] = "禁用真空门",
     ["Disable Giggle"] = "禁用Giggle",
-    ["Disable Gloombat Eggs"] = "禁用Gloombat蛋",
+    ["Disable Gloombat Eggs"] = "禁用 Gloombat 蛋",
     ["Disable Dread"] = "禁用Dread",
     ["No Lookman Damage"] = "无Lookman伤害",
     ["Enable"] = "启用",
@@ -165,14 +104,11 @@ local Translations = {
     ["Top"] = "头顶",
     ["This painting is titled"] = "这幅画标题为",
     ["Center"] = "准心",
-    ["Ladder Speed"] = "梯子速度",
     ["Enable Ladder Speed"] = "启用梯子速度",
     ["Fast Closet Exit"] = "快速柜子退出",
     ["No Acceleration"] = "无加速度",
-    ["Noclip"] = "穿墙",
     ["Enable Jumping"] = "启用跳跃",
     ["Infinite Jumps"] = "无限跳跃",
-    ["Flight"] = "飞行",
     ["Flight Speed"] = "飞行速度",
     ["Prompt"] = "提示",
     ["Instant Prompts"] = "即时互动",
@@ -181,7 +117,6 @@ local Translations = {
     ["World"] = "世界",
     ["Door Reach"] = "开门范围",
     ["Transparent Closets"] = "透明柜子",
-    ["Transparency"] = "透明度",
     ["Disablers"] = "禁用器",
     ["Bypasses"] = "绕过",
     ["Bypass"] = "绕过",
@@ -191,6 +126,9 @@ local Translations = {
     ["Oxygen level"] = "氧气水平",
     ["Position Spoof"] = "位置欺骗（无敌模式）",
     ["Spoof Position"] = "位置欺骗（无敌模式）",
+    ["Noclip"] = "穿墙",
+    ["Flight"] = "飞行",
+    ["Auto Closet"] = "自动躲柜子",
     ["Speed Bypass"] = "绕过速度检测",
     ["Crouch Spoof"] = "假装蹲下",
     ["Anticheat Manipulation"] = "完美穿墙",
@@ -206,7 +144,7 @@ local Translations = {
     ["No Eyes Damage"] = "无eyes伤害",
     ["No Screech Damage"] = "无screech伤害",
     ["No Halt Damage"] = "无halt伤害",
-    ["No A-90 Damage"] = "无 A-90 伤害",
+    ["No A-90 Damage"] = "无A-90伤害",
     ["Item Silent Aim"] = "物品静默瞄准",
     ["Silent Aim Range"] = "静默瞄准范围",
     ["Show Range"] = "显示范围",
@@ -218,10 +156,9 @@ local Translations = {
     ["Ignore List"] = "忽略列表",
     ["Jeff Items"] = "Jeff 商店",
     ["Interact Delay"] = "交互延迟",
-    ["Auto Closet"] = "自动躲柜子",
     ["Spectate Mode"] = "观战模式",
     ["Player to Entity"] = "玩家到实体",
-    ["Entity to Player"] = "玩家到实体",
+    ["Entity to Player"] = "实体到玩家",
     ["Spectate Entity"] = "观战实体",
     ["Selection"] = "选择",
     ["Objectives"] = "目标",
@@ -242,7 +179,7 @@ local Translations = {
     ["Remove Damage Sounds"] = "移除伤害声音",
     ["Other"] = "其他",
     ["Disable AFK Kick"] = "禁用挂机踢人",
-    ["Revive"] = "复活吧！",
+    ["Revive"] = "复活",
     ["Kill Character"] = "自杀",
     ["Play Again"] = "重新开始",
     ["Return to Lobby"] = "返回大厅",
@@ -273,8 +210,8 @@ local Translations = {
     ["Are you sure"] = "你确定吗",
     ["RightControl"] = "右ctrl",
     ["DPI Scale"] = "DPI 缩放",
-    ["Copy Discord Invite"] = "复制 Discord 邀请链接",
-    ["Unload"] = "卸载",
+    ["Copy Discord Invite"] = "复制Discord邀请链接",
+    ["Unload"] = "卸载脚本",
     ["Reload"] = "重新加载",
     ["Config name"] = "配置名称",
     ["Create config"] = "创建配置",
@@ -292,9 +229,9 @@ local Translations = {
     ["Get on a ladder to fix it"] = "爬上梯子修复",
     ["Your movement is now fully automated"] = "您的行动现已完全自动化",
     ["Avoid walking on the grass"] = "避免在草地上行走",
-    ["Position Spoof doesn't work on A-120"] = "遁地术在 A-120 上不起作用",
-    ["Show Seek Path"] = "显示 Seek 路径",
-    ["Show Eyestalk Path"] = "显示 Eyestalk 路径",
+    ["Position Spoof doesn't work on A-120"] = "无敌模式在A-120上不起作用",
+    ["Show Seek Path"] = "显示Seek路径",
+    ["Show Eyestalk Path"] = "显示Eyestalk路径",
     ["Viusals"] = "视觉",
     ["Door"] = "门",
     ["Disable Nanner Peel"] = "禁用香蕉皮",
@@ -317,7 +254,6 @@ local Translations = {
     ["Battery Pack"] = "电池包",
     ["Bandage Pack"] = "绷带包",
     ["Shears"] = "剪刀",
-    ["lockpick"] = "撬锁器",
     ["Toolshed"] = "工具棚",
     ["Glowstick"] = "荧光棒",
     ["Spotlight"] = "大灯",
@@ -360,7 +296,7 @@ local Translations = {
     ["Pipe"] = "水管",
     ["Bed"] = "床",
     ["Double Bed"] = "双人床",
-    ["Closet"] = "橱柜",
+    ["Closet"] = "衣柜",
     ["Locker"] = "铁柜",
     ["Mouse Hole"] = "老鼠洞",
     ["Item Locker"] = "物品柜",
@@ -387,7 +323,7 @@ local Translations = {
     ["Destination"] = "目的地",
     ["Friends Only"] = "仅限好友",
     ["Create Elevator"] = "创建电梯",
-    ["Import from Game UI"] = "从游戏 UI 导入",
+    ["Import from Game UI"] = "从游戏UI导入",
     ["Damage"] = "伤害",
     ["Elevator name"] = "电梯名称",
     ["Create elevator"] = "创建电梯",
@@ -396,7 +332,7 @@ local Translations = {
     ["Overwrite elevator"] = "覆盖电梯",
     ["Delete elevator"] = "删除电梯",
     ["Auto Join Elevator"] = "自动加入电梯",
-    ["Redeem all Codes"] = "兑换所有礼包代码",
+    ["Redeem all Codes"] = "兑换所有代码",
     ["Rejoin Server"] = "重新加入服务器",
     ["Cycle Delay"] = "周期延迟",
     ["Cycle Achievements"] = "循环成就",
@@ -416,274 +352,319 @@ local Translations = {
     ["Creation"] = "创建",
     ["Manager"] = "配置",
     ["Saves"] = "存档",
+    ["Toggle"] = "开/关",
     ["Panel Settings"] = "面板设置",
+    ["CONFIRM"] = "继续",
+    ["PRE-RUN SHOP"] = "准备商店",
+    ["skip the key"] = "我，无“锁”不能！",
+    ["temporarily boosts speed"] = "话说为什么一瓶药只能吃一口",
+    ["Batteries included"] = "照亮你的美。",
+    ["Basic temporary light source"] = "普通打火机，貌似可以点燃些东西",
+    ["5X KNOBS BOOST"] = "5X 门把手（真有人买吗）",
+    ["LASTS ONE FLOOR. ADDS 500% MULTIPLIER TO KNOBS"] = "不要99，不要88，只要49，五倍门把手带回家！",
+    ["Shortcuts & easy loot"] = "剪！剪！剪！",
+    ["It works here!"] = "十字架，横扫户外，做回自己！",
+    ["Quietness"] = "Qcumber100汉化",
+    ["HOLD"] = "长按",
+    ["Ignore"] = "忽略",
+    ["This is what a notification will look like."] = "通知就长这样。",
 }
 
+local TranslatedObjects = setmetatable({}, {__mode = "k"})
+
+local function showNotification(message)
+    local success, result = pcall(function()
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "TranslationNotification"
+        ScreenGui.Parent = CoreGui
+        ScreenGui.ResetOnSpawn = false
+
+        local Frame = Instance.new("Frame")
+        Frame.Size = UDim2.new(0, 300, 0, 100)
+        Frame.Position = UDim2.new(0.5, -150, 0.5, -50)
+        Frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+        Frame.BorderColor3 = Color3.new(0.3, 0.3, 0.3)
+        Frame.BorderSizePixel = 2
+        Frame.Active = true
+        Frame.Draggable = true
+        Frame.Parent = ScreenGui
+
+        local TextLabel = Instance.new("TextLabel")
+        TextLabel.Size = UDim2.new(1, 0, 0.8, 0)
+        TextLabel.Position = UDim2.new(0, 0, 0, 0)
+        TextLabel.BackgroundTransparency = 1
+        TextLabel.Text = message
+        TextLabel.TextColor3 = Color3.new(1, 1, 1)
+        TextLabel.TextScaled = true
+        TextLabel.Parent = Frame
+
+        local CloseButton = Instance.new("TextButton")
+        CloseButton.Size = UDim2.new(1, 0, 0.2, 0)
+        CloseButton.Position = UDim2.new(0, 0, 0.8, 0)
+        CloseButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+        CloseButton.Text = "关闭"
+        CloseButton.TextColor3 = Color3.new(1, 1, 1)
+        CloseButton.Parent = Frame
+        
+        CloseButton.MouseButton1Click:Connect(function()
+            ScreenGui:Destroy()
+        end)
+
+        task.delay(CONFIG.NOTIFICATION_DURATION, function()
+            if ScreenGui and ScreenGui.Parent then
+                ScreenGui:Destroy()
+            end
+        end)
+        
+        return ScreenGui
+    end)
+    
+    if not success then
+        warn("通知创建失败:", result)
+    end
+end
+
 local function translateText(text)
-    if not text or type(text) ~= "string" then 
+    if not text or type(text) ~= "string" or text == "" then 
         return text 
     end
     
     local processedText = text:lower():gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-    local originalProcessed = processedText
-
+    
     for en, cn in pairs(Translations) do
         local enLower = en:lower()
-        if processedText == enLower or processedText == enLower .. ":" or processedText == enLower .. " " then
+        if processedText == enLower or processedText == enLower .. ":" then
             return cn
         end
     end
-
+    
     for en, cn in pairs(Translations) do
-        local enLower = en:lower()
-        if processedText:find(enLower, 1, true) then
-            local pattern = en:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
-            local result = text:gsub(pattern, cn, 1)
-            return result
+        if text:lower():find(en:lower(), 1, true) then
+            local escapedPattern = en:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1")
+            local result = text:gsub(escapedPattern, cn, 1)
+            if result ~= text then
+                return result
+            end
         end
     end
-
+    
     return text
 end
 
-local function setupTranslationEngine()
-    local success, err = pcall(function()
-        local mt = getrawmetatable(game)
-        local oldIndex = mt.__newindex
+local function translateGuiElementImmediately(gui)
+    if TranslatedObjects[gui] then return false end
+    
+    local success, originalText = pcall(function()
+        return gui.Text
+    end)
+    
+    if not success or not originalText or originalText == "" then
+        TranslatedObjects[gui] = true
+        return false
+    end
+    
+    local translationSuccess, translatedText = pcall(function()
+        return translateText(originalText)
+    end)
+    
+    if translationSuccess and translatedText and translatedText ~= originalText then
+        local setSuccess, setError = pcall(function()
+            gui.Text = translatedText
+        end)
         
-        if not oldIndex then
-            error("")
+        if setSuccess then
+            TranslatedObjects[gui] = true
+            return true
+        else
+            warn("设置文本失败:", setError)
         end
+    end
+    
+    TranslatedObjects[gui] = true
+    return false
+end
+
+local function batchTranslateContainerImmediately(container)
+    if not container then return 0 end
+    
+    local translatedCount = 0
+    local elementsToTranslate = {}
+    
+    local success, descendants = pcall(function()
+        return container:GetDescendants()
+    end)
+    
+    if not success then return 0 end
+    
+    for _, descendant in ipairs(descendants) do
+        if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) and not TranslatedObjects[descendant] then
+            table.insert(elementsToTranslate, descendant)
+        end
+    end
+    
+    for i = 1, #elementsToTranslate, CONFIG.BATCH_PROCESS_SIZE do
+        local batchEnd = math.min(i + CONFIG.BATCH_PROCESS_SIZE - 1, #elementsToTranslate)
+        
+        for j = i, batchEnd do
+            local element = elementsToTranslate[j]
+            if translateGuiElementImmediately(element) then
+                translatedCount = translatedCount + 1
+            end
+        end
+        
+        if batchEnd < #elementsToTranslate then
+            RunService.Heartbeat:Wait()
+        end
+    end
+    
+    return translatedCount
+end
+
+local function setupTextChangeListener(gui)
+    if not gui:IsA("TextLabel") and not gui:IsA("TextButton") and not gui:IsA("TextBox") then
+        return
+    end
+    
+    local connection
+    connection = gui:GetPropertyChangedSignal("Text"):Connect(function()
+        if not gui or not gui.Parent then
+            if connection then
+                connection:Disconnect()
+            end
+            return
+        end
+        
+        local success, result = pcall(function()
+            local currentText = gui.Text
+            if currentText and currentText ~= "" then
+                local translatedText = translateText(currentText)
+                if translatedText ~= currentText then
+                    gui.Text = translatedText
+                end
+            end
+        end)
+        
+        if not success then
+            warn("文本变化监听失败:", result)
+        end
+    end)
+end
+
+local function setupContainerListener(container)
+    if not container then return end
+    
+    container.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+            translateGuiElementImmediately(descendant)
+            setupTextChangeListener(descendant)
+        end
+    end)
+end
+
+local function setupEnhancedMetatableHijack()
+    return pcall(function()
+        local mt = getrawmetatable(game)
+        if not mt then return false end
+        
+        local oldNewIndex = mt.__newindex
+        if not oldNewIndex then return false end
         
         setreadonly(mt, false)
         
         mt.__newindex = newcclosure(function(t, k, v)
-            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox") or t:IsA("Slider")) and k == "Text" then
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
                 local original = tostring(v)
                 local translated = translateText(original)
                 if original ~= translated then
                     v = translated
                 end
             end
-            return oldIndex(t, k, v)
+            return oldNewIndex(t, k, v)
         end)
         
         setreadonly(mt, true)
+        return true
+    end)
+end
+
+local function setupTranslationEngine()
+    local totalTranslated = 0
+    
+    local metatableSuccess = setupEnhancedMetatableHijack()
+    
+    local containers = {CoreGui}
+    
+    local playerGuiSuccess, playerGui = pcall(function()
+        return LocalPlayer.PlayerGui
+    end)
+    if playerGuiSuccess then
+        table.insert(containers, playerGui)
+    end
+    
+    local starterGuiSuccess = pcall(function()
+        return StarterGui
+    end)
+    if starterGuiSuccess then
+        table.insert(containers, StarterGui)
+    end
+    
+    for _, container in ipairs(containers) do
+        if container then
+            local count = batchTranslateContainerImmediately(container)
+            totalTranslated = totalTranslated + count
+        end
+    end
+    
+    for _, container in ipairs(containers) do
+        if container then
+            setupContainerListener(container)
+            
+            local success, descendants = pcall(function()
+                return container:GetDescendants()
+            end)
+            if success then
+                for _, descendant in ipairs(descendants) do
+                    if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                        setupTextChangeListener(descendant)
+                    end
+                end
+            end
+        end
+    end
+    
+    if not metatableSuccess then
+        warn("元表劫持失败，使用GUI扫描方案")
+    end
+    
+    return totalTranslated
+end
+
+local function main()
+    task.wait(CONFIG.TRANSLATE_DELAY)
+    
+    local startTime = os.clock()
+    local success, result = pcall(function()
+        return setupTranslationEngine()
     end)
     
-    if not success then
-        local translated = setmetatable({}, {__mode = "k"})
-        
-        local function isSliderRelated(gui)
-            local parent = gui.Parent
-            return parent and (parent.Name:find("Slider") or parent.Name:find("Control") or parent.Name:find("Adjust"))
-        end
-        
-        local function translateGui(gui)
-            local isSlider = isSliderRelated(gui)
-            if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
-                task.wait(isSlider and 0.3 or 0.1)
-                pcall(function()
-                    local original = gui.Text
-                    if original and original ~= "" then
-                        local translatedText = translateText(original)
-                        if translatedText ~= original then
-                            gui.Text = translatedText
-                        end
-                    end
-                    
-                    gui:GetPropertyChangedSignal("Text"):Connect(function()
-                        task.wait(0.05)
-                        local newText = gui.Text
-                        local newTranslated = translateText(newText)
-                        if newTranslated ~= newText then
-                            gui.Text = newTranslated
-                        end
-                    end)
-                    
-                    translated[gui] = true
-                end)
-            end
-        end
-        
-        local function scanAndTranslate()
-            local containers = {
-                game:GetService("CoreGui"),
-                game.Players.LocalPlayer.PlayerGui,
-                game:GetService("StarterGui")
-            }
-            for _, container in ipairs(containers) do
-                if container then
-                    for _, gui in ipairs(container:GetDescendants()) do
-                        if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) then
-                            translateGui(gui)
-                        end
-                    end
-                end
-            end
-        end
-        
-        local function scanSlidersOnly()
-            local containers = {
-                game:GetService("CoreGui"),
-                game.Players.LocalPlayer.PlayerGui
-            }
-            for _, container in ipairs(containers) do
-                if container then
-                    for _, gui in ipairs(container:GetDescendants()) do
-                        if (gui:IsA("TextLabel") or gui:IsA("TextButton")) and isSliderRelated(gui) and not translated[gui] then
-                            translateGui(gui)
-                        end
-                    end
-                end
-            end
-        end
-        
-        local function setupListener(parent)
-            if parent then
-                parent.DescendantAdded:Connect(function(descendant)
-                    local delay = isSliderRelated(descendant) and 0.5 or 0.2
-                    task.wait(delay)
-                    if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) then
-                        translateGui(descendant)
-                    end
-                end)
-            end
-        end
-        
-        local containers = {
-            game:GetService("CoreGui"),
-            game.Players.LocalPlayer.PlayerGui,
-            game:GetService("StarterGui")
-        }
-        for _, container in ipairs(containers) do
-            setupListener(container)
-        end
-        
-        scanAndTranslate()
-        
-        task.spawn(function()
-            local isExternalLoaded = getgenv().AbysallHubLoaded or false
-            while true do
-                scanAndTranslate()
-                local waitTime = isExternalLoaded and 8 or 3
-                task.wait(waitTime)
-                isExternalLoaded = getgenv().AbysallHubLoaded or false
-            end
-        end)
-        
-        task.spawn(function()
-            while true do
-                scanSlidersOnly()
-                task.wait(CONFIG.SLIDER_SCAN_INTERVAL)
-            end
-        end)
-    end
-end
-
-task.wait(CONFIG.TRANSLATE_DELAY)
-setupTranslationEngine()
-
-showNotification(" 翻译引擎加载完成 准备启动脚本")
-print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
-print("翻译引擎加载成功 v0.2 2025/11/2")
-print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")  -- 新增：输出翻译完成日志
-
-local function loadExternalScript()
-    updateLoadState({
-        loaded = false,
-        loading = true,
-        lastAttempt = currentTime,
-        retryCount = loadState.retryCount
-    })
-
-    getgenv().AbysallHubLoaded = nil
-    getgenv().AbysallHub = nil
-
-    local loadSuccess, loadErr
-    local loaderScript
-    local attempts = 0
-
-    while attempts < CONFIG.MAX_RETRIES do
-        attempts = attempts + 1
-
-        loadSuccess, loadErr = pcall(function()
-            loaderScript = game:HttpGetAsync(CONFIG.LOADER_URL, false)
-        end)
-
-        if not loadSuccess then
-            loadSuccess, loadErr = pcall(function()
-                local http = game:GetService("HttpService")
-                loaderScript = http:GetAsync(CONFIG.LOADER_URL, false)
-            end)
-        end
-
-        if not loadSuccess then
-            loadSuccess, loadErr = pcall(function()
-                loaderScript = loadstring(game:HttpGet(CONFIG.LOADER_URL))()
-            end)
-        end
-
-        if loadSuccess then
-            break
-        end
-        
-        if attempts < CONFIG.MAX_RETRIES then
-            task.wait(CONFIG.RETRY_DELAY)
-        end
-    end
-
-    if loadSuccess and loaderScript then
-        local execSuccess, execErr = pcall(function()
-            if type(loaderScript) == "string" then
-                loadstring(loaderScript)()
-            else
-                loaderScript()
-            end
-        end)
-        
-        if execSuccess then
-            task.wait(CONFIG.LOAD_DELAY)
-            
-            if getgenv().AbysallHub then
-                updateLoadState({
-                    loaded = true,
-                    loading = false,
-                    lastAttempt = currentTime,
-                    retryCount = 0
-                })
-                getgenv().AbysallHubLoaded = true
-                
-                if type(getgenv().AbysallHub.Show) == "function" then
-                    pcall(getgenv().AbysallHub.Show)
-                end
-            else
-                updateLoadState({
-                    loaded = false,
-                    loading = false,
-                    lastAttempt = currentTime,
-                    retryCount = loadState.retryCount + 1
-                })
-            end
-        else
-            updateLoadState({
-                loaded = false,
-                loading = false,
-                lastAttempt = currentTime,
-                retryCount = loadState.retryCount + 1
-            })
-        end
+    local endTime = os.clock()
+    local elapsedTime = endTime - startTime
+    
+    if success then
+        local translatedCount = result or 0
+        local message = string.format("翻译引擎加载完成 \n已立即翻译 %d 个文本元素\n耗时: %.2f 秒", translatedCount, elapsedTime)
+        showNotification(message)
+        print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
+        print("翻译引擎加载成功 v0.4\n欢迎使用此汉化脚本")
+        print("立即翻译了", translatedCount, "个文本元素")
+        print("耗时:", string.format("%.2f", elapsedTime), "秒")
+        print("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
     else
-        updateLoadState({
-            loaded = false,
-            loading = false,
-            lastAttempt = currentTime,
-            retryCount = loadState.retryCount + 1
-        })
+        showNotification("翻译引擎加载失败")
+        warn("翻译引擎加载失败:", result)
     end
 end
 
-loadExternalScript()
+main()
 
-task.wait(1)
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/bocaj111004/AbysallHub/refs/heads/main/Loader.lua"))()
