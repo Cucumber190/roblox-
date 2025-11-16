@@ -1,5 +1,4 @@
--- 优化版翻译引擎 v0.7 - 立即更新版本
-local CONFIG = {
+    local CONFIG = {
     TRANSLATE_DELAY = 0.2, -- 进一步减少延迟
     NOTIFICATION_DURATION = 3,
     GUI_SCAN_DELAY = 0.02, -- 大幅减少GUI扫描延迟
